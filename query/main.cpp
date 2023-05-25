@@ -78,18 +78,8 @@ void once_calc(double e,int blockdim,int argc,char **argv)
             all+=res->size();
             delete res;
         }
-        //cout<<all<<"\n";
-//        fs.setdelta(-1);
-//        double all=0;
-//        for(Node &q:queryset)
-//        {
-//            vector<int>* res=fs.rangequery(q.data.data(),q.dim,r,q.loss);
-//            all+=res->size();
-//            delete res;
-//        }
-        //fs.setdelta((int)(min(r/rou,1.0*fs.qs.back()->dim)));
-        //fs.setdelta((int)(min(r/rou,1.0*fs.qs.back()->dim)));
         int dt=(int)(min(r/rou,1.0*fs.qs.back()->dim1));
+        if(rou==-1) dt=-1;
         fs.setdelta(dt);
         time=0;
         dcmp=0;
@@ -126,6 +116,7 @@ void once_calc(double e,int blockdim,int argc,char **argv)
         exit(-1);
     }
     ouf.setf(ios::fixed);
+    if(rou==-1) rou=0;
     for(int k:ks)
     {
         double all=0,acc=0,ol=0;

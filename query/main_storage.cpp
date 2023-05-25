@@ -83,7 +83,9 @@ void once_calc(double e,int blockdim)
         time=0;
         dcmp=0;
         sum=0;
-        fss.setdelta((int)(min(r/rou,1.0*fs.qs.back()->dim1)));
+        int dt=(int)(min(r/rou,1.0*fs.qs.back()->dim1));
+        if(rou==-1) dt=-1;
+        fss.setdelta(dt);
         for(Node &q:queryset)
         {
             vector<int> *res;
@@ -97,7 +99,7 @@ void once_calc(double e,int blockdim)
         map<string,int> idxmp;
         for(Query *qs:fs.qs) idxmp[qs->type]++;
         //cout<<sum<<" "<<all<<endl;
-        ouf<<dataid<<","<<queryid<<","<<r<<","<<e<<","<<rou<<","<<(int)(min(r/rou,1.0*fs.qs.back()->dim1))<<","<<blockdim<<","<<page_size<<",";
+        ouf<<dataid<<","<<queryid<<","<<r<<","<<e<<","<<rou<<","<<dt<<","<<blockdim<<","<<page_size<<",";
         for(auto &[u,v]:idxmp) ouf<<u<<"("<<v<<") ";
         ouf<<","<<"MB,"<<buildtime/1000.0<<"s,"<<sum/queryset.size()<<","<<100.0*sum/all<<"%,";
         ouf<<dcmp/queryset.size()<<","<<page/queryset.size()<<","<<time/1000/queryset.size()+querytranstime+red_dim_time<<","
@@ -106,6 +108,7 @@ void once_calc(double e,int blockdim)
     }
     ouf.close();
 
+    if(rou==-1) rou=0;
     ouf.open(string("../")+"knn_storage.csv",ios::app);
     if(!ouf.is_open())
     {
