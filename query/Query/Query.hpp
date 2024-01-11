@@ -6,7 +6,6 @@
 #include "../GNAT/GNAT.hpp"
 #include"../enumeration/enumeration.hpp"
 #include"../myfunctions.hpp"
-#include"../monitoring.hpp"
 #include<vector>
 #include<time.h>
 #include<queue>
@@ -19,6 +18,7 @@ extern int mtree_mn,gnat_arity;
 using namespace std;
 using namespace std::chrono;
 typedef pair<double,int> PDI;
+//#define lazy
 #ifdef CALC_DIST_COUNT
 extern double dcmp;
 #endif
@@ -42,6 +42,9 @@ struct Query
     Loss loss;
     double e2_16;
     vector<int> idmp;//map real id
+    #ifdef lazy
+    unordered_set<int> lazy_update;
+    #endif // lazy
     Query(const Query &qe):tree(qe.tree),type(qe.type){}
 
     Query(vector<Node> dataset,double e):type("null")
@@ -78,6 +81,13 @@ struct Query
         {
             tree.gnat=new GNAT_t(dataset,10);
             type="gnat";
+        }
+        #elif defined(USE_ENUM)
+        else
+        {
+            enumeration *enu=new enumeration(dataset);
+            tree.enu=enu;
+            type="enum";
         }
         #else
         else
@@ -116,9 +126,31 @@ struct Query
         int id=0;
         while(id<get_num() and idmp[id]!=idx) id++;
         if(id==get_num()) return false;
+        #ifdef lazy
+        lazy_update.insert(id);
+        loss.del(id);
+        if(lazy_update.size()*10>=get_num())
+        {
+            vector<int> tmp_idmp(get_num()-lazy_update.size());
+            for(int i=0,j=0;i<idmp.size();i++)
+                if(!lazy_update.count(i))
+                    tmp_idmp[j++]=idmp[i];
+            idmp=tmp_idmp;
+            vector<float> tmp_dataset2(get_num()-lazy_update.size());
+            for(int i=0,k=0;i<get_num();i++)
+            {
+                if(lazy_update.count(i)) continue;
+                for(int j=0;j<dim2;j++)
+                    tmp_dataset2[k++]=dataset2[i*dim2+j];
+            }
+            dataset2=tmp_dataset2;
+            lazy_update.clear();
+        }
+        #else
         if(dim2) dataset2.erase(dataset2.begin()+id*dim2,dataset2.begin()+(id+1)*dim2);
         idmp.erase(idmp.begin()+id);
         loss.del(id);
+        #endif // lazy
         if(type=="ept") return tree.ept->del(idx);
         return tree.enu->del(idx);
     }
@@ -134,9 +166,12 @@ struct Query
             tree.sat->rangequery(q,r,ans);
         }
         else if(type=="gnat") ans=tree.gnat->rangequery(q,r);
+        else if(type=="enum") ans=tree.enu->range_query(q,r);
         for(PDI &tmp:(*ans))
         {
+            #ifndef not_pruning
             if(tmp.fi>r2) continue;
+            #endif // not_pruning
             tmp.fi+=distance(q+dim1,dataset2.data()+tmp.se*dim2);
             if(tmp.fi>r2) continue;
             tmp.se=idmp[tmp.se];
@@ -162,6 +197,7 @@ struct Query
             tree.sat->rangequery(q,r,ans);
         }
         else if(type=="gnat") ans=tree.gnat->rangequery(q,r);
+        else if(type=="enum") ans=tree.enu->range_query(q,r);
         for(PDI &tmp:(*ans))
         {
             #ifndef not_pruning

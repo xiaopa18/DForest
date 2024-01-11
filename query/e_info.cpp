@@ -17,10 +17,9 @@
 #define se second
 
 using namespace std;
-vector<string> dataids({"Uniform_n100000_dim256","Uniform_n100000_dim512","Uniform_n100000_dim1024","Uniform_n100000_dim2048","Uniform_n100000_dim4096","Uniform_n300000_dim256"
-,"Uniform_n500000_dim256","Uniform_n700000_dim256","Uniform_n1000000_dim256"});
-string dataid="Uniform_n100000_dim256";
-string dataset_file = "../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
+vector<string> dataids({"normal_n1000000_dim256"});
+string dataid="normal_n1000000_dim256";
+string dataset_file = "../../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
 typedef pair<string,double> PSD;
 map<int,vector<PSD>> mp;
 vector<Node> dataset;
@@ -29,7 +28,7 @@ int main()
 {
     for(string dataid:dataids)
     {
-        dataset_file = "../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
+        dataset_file = "../../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
         dataset=read_dataset(dataset_file);
         get_dim(dataset,0);
         double dis=0;

@@ -7,6 +7,7 @@
 #include<algorithm>
 #include<queue>
 #include<vector>
+#include<unordered_set>
 #include<random>
 #include<set>
 #include"../Loss/Loss.hpp"
@@ -16,7 +17,7 @@ typedef pair<double,int> PDI;
 #ifdef CALC_DIST_COUNT
 extern double dcmp;
 #endif // CALC_DIST_COUNT
-
+//#define lazy
 struct EPT
 {
     int num_cand;//the number of candidate
@@ -31,6 +32,9 @@ struct EPT
     int* cand;
     int sampleSize;
     float* samples_objs;
+    #ifdef lazy
+    unordered_set<int> lazy_update;
+    #endif // lazy
     EPT(vector<Node> &dataset,int LGroup,int num_cand);
     ~EPT();
     void sample_data(int nums, vector<Node> &dataset);
@@ -40,6 +44,7 @@ struct EPT
     bool insert(Node p);
     bool del(int idx);
     vector<PDI>* rangequery(float *que,double r);
+    priority_queue<PDI> knn(float *que,int k);
     double memory_used()
     {
         return 20+4.0*(dataset1.size()+pivId.size())+8.0*dist.size()
@@ -62,6 +67,9 @@ vector<PDI>* EPT::rangequery(float *que,double r)
 	int pos=-LGroup;
     for(int i=0;i<num;i++)
     {
+        #ifdef lazy
+        if(lazy_update.count(i)) continue;
+        #endif // lazy
         pos+=LGroup;
         next = false;
         for(int j=0;j<LGroup;j++)
@@ -81,6 +89,50 @@ vector<PDI>* EPT::rangequery(float *que,double r)
     return ans;
 }
 
+priority_queue<PDI> EPT::knn(float *que,int k)
+{
+    priority_queue<PDI> res;
+    double dis,r2=1e18,pivotsquery[num_cand],r=1e18;
+    for (int i = 0; i < num_cand; ++i)
+	{
+		if (ispivot[i])
+		{
+			pivotsquery[i] = sqrt(distance(que, samples_objs+cand[i]*dim1,dim1));
+		}
+	}
+	bool next = false;
+	int pos=-LGroup;
+    for(int i=0;i<num;i++)
+    {
+        #ifdef lazy
+        if(lazy_update.count(i)) continue;
+        #endif // lazy
+        pos+=LGroup;
+        next = false;
+        for(int j=0;j<LGroup;j++)
+        {
+            if(fabs(pivotsquery[pivId[pos+j]]-dist[pos+j]) > r)
+            {
+                next=true;
+                break;
+            }
+        }
+        if(!next)
+        {
+            dis=distance(que,dataset1.data()+i*dim1,dim1);
+            if(dis>r2) continue;
+            res.push({dis,i});
+            if(res.size()==k+1)
+            {
+                res.pop();
+                r2=res.top().first;
+                r=sqrt(r2);
+            }
+        }
+    }
+    return res;
+}
+
 double EPT::distance(float *a,float *b,int len)
 {
     double res=0,dx;
@@ -95,7 +147,7 @@ double EPT::distance(float *a,float *b,int len)
     return res;
 }
 
-EPT::EPT(vector<Node> &dataset,int LGroup=10,int num_cand=40)
+EPT::EPT(vector<Node> &dataset,int LGroup=5,int num_cand=40)
 {
     num=dataset.size();
     this->LGroup=LGroup;
@@ -143,6 +195,31 @@ bool EPT::insert(Node p)
 
 bool EPT::del(int id)
 {
+    if(id<0 or id>=num) return false;
+    #ifdef lazy
+    lazy_update.insert(id);
+    if(lazy_update.size()*10>=num)
+    {
+        vector<float> tmp_dataset1((num-lazy_update.size())*dim1,0);
+        vector<int> tmp_pivId((num-lazy_update.size())*LGroup,0);
+        vector<double> tmp_dist((num-lazy_update.size())*LGroup,0);
+        for(int i=0,p=0,k=0;i<num;i++)
+        {
+            if(lazy_update.count(i)) continue;
+            for(int j=0;j<dim1;j++) tmp_dataset1[p++]=dataset1[i*dim1+j];
+            for(int j=0;j<LGroup;j++)
+            {
+                tmp_pivId[k]=pivId[i*LGroup+j];
+                tmp_dist[k++]=dist[i*LGroup+j];
+            }
+        }
+        dataset1=tmp_dataset1;
+        pivId=tmp_pivId;
+        dist=tmp_dist;
+        num-=lazy_update.size();
+        lazy_update.clear();
+    }
+    #else
     if(dim1)
     {
         dataset1.erase(dataset1.begin()+id*dim1,dataset1.begin()+(id+1)*dim1);
@@ -150,6 +227,7 @@ bool EPT::del(int id)
         dist.erase(dist.begin()+id*LGroup,dist.begin()+(id+1)*LGroup);
     }
     num--;
+    #endif // lazy
     return true;
 }
 

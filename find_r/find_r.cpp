@@ -11,25 +11,25 @@
 using namespace std;
 typedef long long LL;
 int index_compdists;
-string dataid="deep1M";
-string dir = "../data_set/"+dataid+"/";
+string dataid="normal_n1000000_dim256";
+string dir = "../../data_set/"+dataid+"/";
 string dataset_file_name = dataid+"_afterpca.csv";
 string queryset_file_name = dataid+"_uniform1000_afterpca.csv";
 string outfile=splitby(dataset_file_name,'.')[0]+"_r.txt";
 vector<Node> dataset;
 vector<Node> queryset;
-vector<double> pro({0.1,0.5,1,2,4});
+vector<double> pro({0.1});
 vector<vector<double>> dists;
-double e=0.4;
-int blockdim=4;
+double e=6.400012;
+int blockdim=1;
 
 int main(int argc,char **argv)
 {
-    if(argc==4)
+    if(argc==3)
     {
-        dataid=argv[1];e=stod(argv[2]);blockdim=stoi(argv[3]);
+        dataid=argv[1];e=stod(argv[2]);
     }
-    dir = "../data_set/"+dataid+"/";
+    dir = "../../data_set/"+dataid+"/";
     dataset_file_name = dataid+"_afterpca.csv";
     queryset_file_name = dataid+"_uniform1000_afterpca.csv";
     outfile=splitby(dataset_file_name,'.')[0]+"_r.txt";
@@ -48,7 +48,7 @@ int main(int argc,char **argv)
     int k=(int)(dataset.size()*pro.back()/100);
     for(Node &q:queryset)
     {
-        priority_queue<PDI> res=fs.knn(q.data.data(),q.dim,k);
+        priority_queue<PDI> res=fs.rangequery_knn(q.data.data(),q.dim,k);
         rm=max(rm,sqrt(res.top().fi));
     }
     for(double p:pro)

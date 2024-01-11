@@ -1,12 +1,12 @@
 #include<bits/stdc++.h>
 #include"./query/Node.hpp"
 #include"./query/myfunctions.hpp"
-#define origin
+//#define origin
 using namespace std;
 mt19937 gen((unsigned int) time(nullptr));
-string dataid="audio",distibut="uniform";
-int q_num=5000;
-string filename="./data_set/"+dataid+"/"+dataid+".csv";
+string dataid="normal_n1000000_dim256",distibut="uniform";
+int q_num=1000;
+string filename="../data_set/"+dataid+"/"+dataid+".csv";
 vector<vector<double>> dataset;
 vector<double> mx,mn;
 double pro=0.05;
@@ -37,7 +37,7 @@ void create_uniform()
 {
     uniform_int_distribution<int> intdis(0,dataset.size()-1);
     uniform_real_distribution<double> moddis(0,1.0);
-    ofstream ouf("./data_set/"+dataid+"/"+dataid+"_"+distibut+to_string(q_num)+".csv",ios::out);
+    ofstream ouf("../data_set/"+dataid+"/"+dataid+"_"+distibut+to_string(q_num)+".csv",ios::out);
     #ifdef origin
         ofstream of("./data_set/"+dataid+"/"+dataid+"_"+distibut+to_string(q_num)+"_origin.csv",ios::out);
     #endif // origin

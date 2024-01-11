@@ -21,9 +21,9 @@ struct Forest
     vector<Query*> qs;//Ã¿¿é
     vector<int> lselect,rselect;
     vector<int> dimselect;
-    Forest(vector<Node> dataset,int block_dim,double e,int,int delta);
+    Forest(vector<Node> dataset,double e,int,int delta);
     ~Forest();
-    vector<int>* rangequery(float *q,int dim,double r,vector<double> &loss);
+    vector<int>* rangequery(float *q,int dim,double r,vector<double> &loss,double rou);
     vector<int>* thread_rangequery(float *q,int dim,double r,vector<double> &loss);
     priority_queue<PDI> rangequery_knn(float *q,int dim,int k,double rou);
     double memory_used();
@@ -44,7 +44,7 @@ double Forest::memory_used()
     return mem/1024/1024;
 }
 
-Forest::Forest(vector<Node> dataset,int block_dim,double e,int blocknum=2000,int delta=-1)
+Forest::Forest(vector<Node> dataset,double e,int blocknum=2000,int delta=-1)
 {
     dim=dataset[0].data.size();
     dimselect.resize(dim+1);
@@ -56,7 +56,6 @@ Forest::Forest(vector<Node> dataset,int block_dim,double e,int blocknum=2000,int
     int dimcnt=0;
     for(int i=0;i<dataset.size();)
     {
-        //cout<<i<<"\n";
         int j=i;
         dimcnt++;
         while(j<dataset.size() and dataset[j].dim==dataset[i].dim)
@@ -65,7 +64,7 @@ Forest::Forest(vector<Node> dataset,int block_dim,double e,int blocknum=2000,int
             dimselect[dataset[j].dim]=qs.size();
             j++;
         }
-        if((tmp.size()>=blocknum and dimcnt>=block_dim) or j==dataset.size())
+        if((tmp.size()>=blocknum) or j==dataset.size())
         {
             dimcnt=0;
             if(dataset.size()-j<blocknum)
@@ -143,9 +142,31 @@ void Forest::view()
 
 }
 
-vector<int>* Forest::rangequery(float *q,int dim,double r,vector<double> &loss)
+vector<int>* Forest::rangequery(float *q,int dim,double r,vector<double> &loss,double rou=0)
 {
-    int st=lselect[dim],ed=rselect[dim];
+    int st=0,ed=qs.size()-1;
+    if(rou>1e-5)
+    {
+        int dt=min((int)r/rou,1e5);
+        int d=dim+dt;
+        int l=st,r=ed;
+        while(l<r)
+        {
+            int mid=l+r>>1;
+            if(qs[mid]->dim1>=d) r=mid;
+            else l=mid+1;
+        }
+        ed=r;
+        l=st;
+        d=dim-dt;
+        while(l<r)
+        {
+            int mid=l+r+1>>1;
+            if(qs[mid]->dim1<=d) l=mid;
+            else r=mid-1;
+        }
+        st=l;
+    }
     vector<int>* res=new vector<int>();
     for(int i=st;i<=ed;i++)
     {

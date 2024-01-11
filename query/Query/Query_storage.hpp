@@ -1,7 +1,6 @@
 #ifndef QUERY_STORAGE_HPP
 #define QUERY_STORAGE_HPP
 #include"../Node.hpp"
-#include"../monitoring.hpp"
 #include"../enumeration/enumeration.hpp"
 #include"../enumeration_storage/enumeration_storage.hpp"
 #include"../EPT_storage/EPT_storage.hpp"

@@ -8,8 +8,8 @@ from sklearn.decomposition import PCA
 from functions import to_string
 import joblib
 import sys
-
-dir = './data_set/'+dataid+'/'
+dataid = 'normal_n1000000_dim256'
+dir = '../data_set/'+dataid+'/'
 file_name = dataid+'.csv'
 
 argv = sys.argv
@@ -19,7 +19,7 @@ if len(argv) != 2 and len(argv) != 1:
     exit(-1)
 if len(argv) != 1:
     dataid=argv[1]
-    dir = './data_set/'+dataid+'/'
+    dir = '../data_set/'+dataid+'/'
     file_name = dataid+'.csv'
 
 print(dir+file_name)

@@ -12,8 +12,8 @@ struct Forest_storage
     vector<Query_storage*> qs;
     vector<int> lselect,rselect;
     vector<int> dimselect;
-    Forest_storage(vector<Node> dataset,int block_dim,double e,string index,int page_size,int blocknum,int delta);
-    vector<int>* rangequery(float *q,int dim,double r,vector<double> &qloss);
+    Forest_storage(vector<Node> dataset,double e,string index,int page_size,int blocknum,int delta);
+    vector<int>* rangequery(float *q,int dim,double r,vector<double> &qloss,double);
     vector<int>* thread_rangequery(float *q,int dim,double r,vector<double> &qloss);
     priority_queue<PDI> rangequery_knn(float *q,int dim,int k,double);
     bool insert(Node p);
@@ -23,7 +23,7 @@ private:
     int delta;
 };
 
-Forest_storage::Forest_storage(vector<Node> dataset,int block_dim,double e,string index,int page_size=4096,int blocknum=2000,int delta=-1)
+Forest_storage::Forest_storage(vector<Node> dataset,double e,string index,int page_size=4096,int blocknum=2000,int delta=-1)
 {
     dim=dataset[0].data.size();
     for(int i=0;i<dataset.size();i++) dataset[i].get_dim(e);
@@ -42,7 +42,7 @@ Forest_storage::Forest_storage(vector<Node> dataset,int block_dim,double e,strin
             dimselect[dataset[j].dim]=qs.size();
             j++;
         }
-        if((tmp.size()>=blocknum and dimcnt>=block_dim) or j==dataset.size())
+        if((tmp.size()>=blocknum ) or j==dataset.size())
         {
             dimcnt=0;
             if(dataset.size()-j<blocknum)
@@ -55,11 +55,7 @@ Forest_storage::Forest_storage(vector<Node> dataset,int block_dim,double e,strin
                 }
             }
             for(int i=0;i<tmp.size();i++) tmp[i].dim=tmp.back().dim;
-            //clock_t ti=-clock();
-            //cout<<"build "<<qs.size()<<" start  size:"<<tmp.size()<<endl;
             qs.push_back(new Query_storage(tmp, e,index+"_"+to_string(qs.size()),page_size));
-            //ti+=clock();
-            //cout<<"build over "<<ti<<" ms"<<endl;
             tmp.resize(0);
         }
         i=j;
@@ -90,9 +86,31 @@ Forest_storage::Forest_storage(vector<Node> dataset,int block_dim,double e,strin
     setdelta(delta);
 }
 
-vector<int>* Forest_storage::rangequery(float *q,int dim,double r,vector<double> &qloss)
+vector<int>* Forest_storage::rangequery(float *q,int dim,double r,vector<double> &qloss,double rou=0)
 {
-    int st=lselect[dim],ed=rselect[dim];
+    int st=0,ed=qs.size()-1;
+    if(rou>1e-5)
+    {
+        int dt=min((int)r/rou,1e5);
+        int d=dim+dt;
+        int l=st,r=ed;
+        while(l<r)
+        {
+            int mid=l+r>>1;
+            if(qs[mid]->dim1>=d) r=mid;
+            else l=mid+1;
+        }
+        ed=r;
+        l=st;
+        d=dim-dt;
+        while(l<r)
+        {
+            int mid=l+r+1>>1;
+            if(qs[mid]->dim1<=d) l=mid;
+            else r=mid-1;
+        }
+        st=l;
+    }
     vector<int>* res=new vector<int>();
     for(int i=st;i<=ed;i++)
     {
@@ -106,7 +124,7 @@ vector<int>* Forest_storage::rangequery(float *q,int dim,double r,vector<double>
 
 vector<int>* Forest_storage::thread_rangequery(float *q,int dim,double r,vector<double> &qloss)
 {
-    int st=lselect[dim],ed=rselect[dim];
+    int st=0,ed=qs.size()-1;
     vector<int>* res=new vector<int>();
     vector<thread*> tds(ed-st+1,nullptr);
     vector<vector<int>*> vcs(ed-st+1,nullptr);

@@ -12,7 +12,7 @@ vector<double> mx,mn;
 double pro=0.5;
 //vector<string> dataids({"audio","enron","deep1M","sift","sun","notre","nuswide","trevi"});
 //vector<string> dataids({"enron","trevi"});
-vector<string> dataids({"deep1M"});
+vector<string> dataids({"glove"});
 
 void read()
 {
@@ -68,7 +68,7 @@ int main()
                 mn[j]=min(mn[j],dataset[i][j]);
         uniform_int_distribution<int> intdis(0,dataset.size()-1);
         uniform_real_distribution<double> moddis(0,1.0);
-        ofstream ouf("./data_set/"+dataid+"_insert"+to_string(q_num)+".csv",ios::out);
+        ofstream ouf("./data_set/"+dataid+"/"+dataid+"_insert"+to_string(q_num)+".csv",ios::out);
         #ifdef origin
             ofstream of("./data_set/"+dataid+"/"+dataid+"_"+distibut+to_string(q_num)+"_origin.csv",ios::out);
         #endif // origin

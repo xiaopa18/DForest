@@ -10,6 +10,7 @@ struct Node
     vector<float> data;
     vector<double> loss;
     int idx,dim;
+    double rou;
     auto begin() const
     {
         return data.begin();
@@ -41,6 +42,14 @@ struct Node
         this->loss[data.size()]=0;
         for(int i=data.size()-1;~i;i--)
             this->loss[i]=sqrt(this->loss[i+1]*this->loss[i+1]+data[i]*data[i]);
+        rou=0;
+        for(int i=dim-2;~i;i--)
+        {
+            //rou=min(rou,(this->loss[i]-this->loss[dim-1])/(dim-1-i+1));
+            rou+=(this->loss[i]-this->loss[dim-1])/(dim-1-i+1);
+        }
+        //if(fabs(rou-1e9)<eps) rou=0;
+        if(rou!=0) rou/=dim-1;
     }
     Node(){}
     bool operator<(const Node &t)const{

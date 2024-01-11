@@ -10,10 +10,13 @@ import sys
 import pandas as pd
 import numpy as np
 
-queryid='uniform1000'
-dir = './data_set/'+dataid+'/'
-query_file_name = f'{dataid}_{queryid}.csv'
 
+dataid='normal10M'
+queryid='uniform1000'
+dir = '../data_set/'+dataid+'/'
+
+query_file_name = f'{dataid}_{queryid}.csv'
+query_file_name = 'insert50000.csv'
 argv = sys.argv
 print(argv)
 if len(argv) != 1:
@@ -33,7 +36,7 @@ print(dir+query_file_name)
 queryset = pd.read_csv(dir+query_file_name,dtype=np.float32,header=None).dropna(axis=1,how='all').to_numpy()
 save_file = dir + 'model'
 if not os.path.exists(save_file):
-    print('don't have the file '+save_file)
+    print('don\'t have the file '+save_file)
     exit(-1)
 model = joblib.load(save_file)
 

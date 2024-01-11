@@ -1,6 +1,7 @@
 #define CALC_DIST_COUNT
 //#define USE_GNAT
 //#define USE_SAT
+//#define USE_ENUM
 #include<iostream>
 #include<cstring>
 #include<algorithm>
@@ -28,38 +29,47 @@ double dcmp;
 #endif
 string dataid="audio";
 string queryid="uniform1000";
-string dataset_file = "../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
-string queryset_file = "../data_set/"+dataid+"/"+dataid+"_"+queryid+"_afterpca.csv";
-string es="42516.31841",block_dims="1";
-double e,buildtime,querytranstime;int blockdim;
+string dataset_file = "../../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
+string queryset_file = "../../data_set/"+dataid+"/"+dataid+"_"+queryid+"_afterpca.csv";
+string es="42516.318408";
+double e,buildtime,querytranstime;
 vector<string> rs({"46798"});
-double rou=728.143704;
-vector<int> ks({10,20,30,40,50});
+vector<int> ks({10});
 vector<double> rss({});
 vector<Node> dataset;
 vector<Node> queryset;
-int pid,deltamax;
 ofstream ouf;
 
-void once_calc(double e,int blockdim,int argc,char **argv)
+void once_calc(double e,int argc,char **argv)
 {
+    ifstream inf(string("../")+"rangequery.csv",ios::in);
+    if(!inf.is_open())
+    {
+        string tmp;
+        int cnt=0;
+        while(getline(inf,tmp))
+        {
+            cnt++;
+        }
+        if(!cnt) ouf<<"dataid,queryid,r,e,build memory,build time,avg find points,avg dcmp,query time(ms)"<<endl;
+    }
+    else ouf<<"dataid,queryid,r,e,build memory,build time,avg find points,avg dcmp,query time(ms)"<<endl;
+    inf.close();
     ouf.open(string("../")+"rangequery.csv",ios::app);
     if(!ouf.is_open())
     {
         cout<<string("../")+"rangequery.csv"<<" open failed"<<endl;
-
         exit(-1);
     }
     ouf.setf(ios::fixed);
     auto tist=steady_clock::now(),tied=steady_clock::now();
-    //e=r/2;
     tist=steady_clock::now();
     get_dim(queryset,e);
     tied=steady_clock::now();
     double red_dim_time=1.0*duration_cast<microseconds>(tied - tist).count()/1000/queryset.size();
     double time=0,usemem,sum=0,radii=0;
     tist=steady_clock::now();
-    Forest fs(dataset,blockdim,e);
+    Forest fs(dataset,e,10);
     tied=steady_clock::now();
     usemem=fs.memory_used();
     cout<<"build over"<<endl;
@@ -69,18 +79,7 @@ void once_calc(double e,int blockdim,int argc,char **argv)
     for(int i=0;i<rss.size();i++)
     {
         double r=rss[i];
-        fs.setdelta(-1);
-        double all=0;
         int cnt=0;
-        for(Node &q:queryset)
-        {
-            vector<int>* res=fs.rangequery(q.data.data(),q.dim,r,q.loss);
-            all+=res->size();
-            delete res;
-        }
-        int dt=(int)(min(r/rou,1.0*fs.qs.back()->dim1));
-        if(rou==-1) dt=-1;
-        fs.setdelta(dt);
         time=0;
         dcmp=0;
         sum=0;
@@ -88,27 +87,35 @@ void once_calc(double e,int blockdim,int argc,char **argv)
         {
             vector<int> *res;
             tist=steady_clock::now();
-            res=fs.rangequery(q.data.data(),q.dim,r,q.loss);
+            res=fs.rangequery(q.data.data(),q.dim,r,q.loss,q.rou);
             tied=steady_clock::now();
             time+=duration_cast<microseconds>(tied - tist).count();
             sum+=res->size();
-//            for(int t:(*res))
-//                if(dist(q,dataset[t])>r)
-//                    cout<<"NO"<<endl;
             delete res;
         }
         map<string,int> idxmp;
         for(Query *qs:fs.qs) idxmp[qs->type]++;
-        ouf<<dataid<<","<<queryid<<","<<r<<","<<e<<","<<rou<<","<<dt<<","<<blockdim<<",";
-        //ouf<<dataid<<","<<queryid<<","<<r<<","<<e<<","<<rou<<","<<-1<<","<<blockdim<<",";
+        ouf<<dataid<<","<<queryid<<","<<r<<","<<e<<",";
         for(auto &[u,v]:idxmp) ouf<<u<<"("<<v<<") ";
-        //cout<<sum<<" "<<all<<endl;
-        ouf<<","<<usemem<<"MB,"<<buildtime/1000.0<<"s,"<<sum/queryset.size()<<","<<100.0*sum/all<<"%,";
+        ouf<<","<<usemem<<"MB,"<<buildtime/1000.0<<"s,"<<sum/queryset.size()<<",";
         ouf<<dcmp/queryset.size()<<","<<time/1000/queryset.size()+red_dim_time+querytranstime<<endl;
         cout<<dataid<<" "<<"rangequery "<<r<<" over"<<endl;
     }
     ouf.close();
 
+    inf.open(string("../")+"knn.csv",ios::in);
+    if(!inf.is_open())
+    {
+        string tmp;
+        int cnt=0;
+        while(getline(inf,tmp))
+        {
+            cnt++;
+        }
+        if(!cnt) ouf<<"dataid,queryid,r,e,build memory,build time,avg find points,avg dcmp,query time(ms)"<<endl;
+    }
+    else ouf<<"dataid,queryid,r,e,build memory,build time,avg find points,avg dcmp,query time(ms)"<<endl;
+    inf.close();
     ouf.open("../knn.csv",ios::app);
     if(!ouf.is_open())
     {
@@ -116,33 +123,32 @@ void once_calc(double e,int blockdim,int argc,char **argv)
         exit(-1);
     }
     ouf.setf(ios::fixed);
-    if(rou==-1) rou=0;
     for(int k:ks)
     {
         double all=0,acc=0,ol=0;
         time=0;
         dcmp=0;
         radii=0;
+        double real_dcmp=0;
         for(int i=0;i<queryset.size();i++)
         {
             Node q=queryset[i];
             priority_queue<PDI> res,real;
-            real=fs.rangequery_knn(q.data.data(),q.dim,k);
+            real_dcmp-=dcmp;
             tist=steady_clock::now();
-            res=fs.rangequery_knn(q.data.data(),q.dim,k,rou);
+            res=fs.rangequery_knn(q.data.data(),q.dim,k,q.rou);
             tied=steady_clock::now();
+            real_dcmp+=dcmp;
             time+=duration_cast<microseconds>(tied - tist).count();
             radii+=sqrt(res.top().fi);
             all+=res.size();
-            acc+=accurate(res,real);
-            ol+=overall(res,real,k);
         }
         map<string,int> idxmp;
         for(Query *qs:fs.qs) idxmp[qs->type]++;
-        ouf<<dataid<<","<<queryid<<","<<k<<","<<e<<","<<blockdim<<",";
+        ouf<<dataid<<","<<queryid<<","<<k<<","<<e<<",";
         for(auto &[u,v]:idxmp) ouf<<u<<"("<<v<<") ";
-        ouf<<","<<usemem<<"MB,"<<buildtime/1000.0<<"s,"<<radii/queryset.size()<<","<<acc/all*100<<"%,"<<ol/queryset.size()<<",";
-        ouf<<dcmp/queryset.size()<<","<<time/1000/queryset.size()+red_dim_time+querytranstime<<endl;
+        ouf<<","<<usemem<<"MB,"<<buildtime/1000.0<<"s,"<<radii/queryset.size()<<",";
+        ouf<<real_dcmp/queryset.size()<<","<<time/1000/queryset.size()+red_dim_time+querytranstime<<endl;
         cout<<dataid<<" knn "<<k<<" over"<<endl;
     }
     ouf.close();
@@ -155,25 +161,22 @@ int main(int argc,char **argv)
     {
         rs=vector<string>();
         dataid=argv[1],queryid=argv[2];
-        es=argv[3],block_dims=argv[4];
-        buildtime=stod(argv[5]),querytranstime=stod(argv[6]);
-        int m=stoi(argv[7]);
+        es=argv[3];
+        buildtime=stod(argv[4]),querytranstime=stod(argv[5]);
+        int m=stoi(argv[6]);
         for(int i=0;i<m;i++)
         {
-            rs.push_back(string(argv[8+i]));
+            rs.push_back(string(argv[7+i]));
         }
-        rou=stod(argv[8+m]);
     }
-    //rs=vector<string>();
-    pid=GetCurrentPid();
-    e=stod(es);blockdim=stoi(block_dims);
-    dataset_file = "../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
-    queryset_file = "../data_set/"+dataid+"/"+dataid+"_"+queryid+"_afterpca.csv";
+    e=stod(es);
+    dataset_file = "../../data_set/"+dataid+"/"+dataid+"_afterpca.csv";
+    queryset_file = "../../data_set/"+dataid+"/"+dataid+"_"+queryid+"_afterpca.csv";
     dataset=read_dataset(dataset_file);
     queryset=read_dataset(queryset_file);
     for(string rads:rs)
         rss.push_back(stod(rads));
     if(rss.size())sort(rss.begin(),rss.end());
-    once_calc(e,blockdim,argc,argv);
+    once_calc(e,argc,argv);
     return 0;
 }
