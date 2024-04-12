@@ -40,4 +40,16 @@ Finally, use `main` or `main_storage` to perform range query and k-nearest neigh
 
 
 
-  
+The benchmark datasets' hyperlinks are as follows:
+
+audio: [http:/cs.princeton.edu/cass/audio.tar.gz](http:/cs.princeton.edu/cass/audio.tar.gz)
+
+sun: http://groups.csail.mit.edu/vision/SUN/
+
+enron: http://www.cs.cmu.edu/enron/
+
+notre: http://phototour.cs.washington.edu/datasets/
+
+glove: https://nlp.stanford.edu/projects/glove/
+
+sift: http://corpus-texmex.irisa.fr/
